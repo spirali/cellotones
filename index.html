@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Bass Clef Note Selector with Cello Fingerboard</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="card">
+    <h1>Interactive Cello Finger Map</h1>
+    You can click on: <strong>a notehead</strong>, <strong>a finger position</strong>, <strong>a position name (range)</strong></p>
+    <p><a href="https://github.com/spirali" style="color: #4a6fa5; font-weight: 600;">Repository</a></p>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <h2>🎵 Bass Clef Note Selector</h2>
+    </div>
+    <div class="accidental-controls">
+      <div class="accidental-group"><label><input type="checkbox" id="C#">C&#9839;</label></div>
+      <div class="accidental-group"><label><input type="checkbox" id="D#">D&#9839;</label></div>
+      <div class="accidental-group"><label><input type="checkbox" id="F#">F&#9839;</label></div>
+      <div class="accidental-group"><label><input type="checkbox" id="G#">G&#9839;</label></div>
+      <div class="accidental-group"><label><input type="checkbox" id="A#">A&#9839;</label></div>
+      <div class="accidental-group"><label><input type="checkbox" id="Db">D&#9837;</label></div>
+      <div class="accidental-group"><label><input type="checkbox" id="Eb">E&#9837;</label></div>
+      <div class="accidental-group"><label><input type="checkbox" id="Gb">G&#9837;</label></div>
+      <div class="accidental-group"><label><input type="checkbox" id="Ab">A&#9837;</label></div>
+      <div class="accidental-group"><label><input type="checkbox" id="Bb">B&#9837;</label></div>
+    </div>
+    <svg id="staff" viewBox="0 0 1300 300" aria-label="Bass clef staff with selectable notes" role="img"></svg>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <h2>🎻 Cello Fingerboard</h2>
+    </div>
+    <svg id="fingerboard" viewBox="0 0 900 800" aria-label="Cello fingerboard with finger positions" role="img"></svg>
+  </div>
+
+  <script>
+
+function selectTone(element) {
+  // Clear all previous selections and highlights
+  allNoteElements.forEach(noteEl => {
+    noteEl.classList.remove('selected', 'same-tone');
+  });
+  allFingerElements.forEach(fingerEl => {
+    fingerEl.classList.remove('active', 'same-tone-finger');
+  });
+
+  // Select the clicked note
+  element.classList.add('selected');
+  currentSelection = element;
+
+  // Get label from the element's dataset
+  const label = element.dataset.noteName;
+  
+  // Highlight all notes with the same tone (letter part only)
+  const selectedTone = label.slice(0, -1);
+  allNoteElements.forEach(noteEl => {
+    const noteName = noteEl.dataset.noteName;
+    if (noteName && noteName.charAt(0) === selectedTone && noteEl !== element) {
+      noteEl.classList.add('same-tone');
+    }
+  });
+
+  allFingerElements.forEach(fingerEl => {
+    if (fingerEl.dataset.noteName === label) {
+      fingerEl.classList.add('active');
+    } else if (fingerEl.dataset.noteName && fingerEl.dataset.noteName.slice(0, -1) === selectedTone) {
+      fingerEl.classList.add('same-tone-finger');
+    }
+  });
+}
+
+    ["C#", "D#", "F#", "G#", "A#", "Db", "Eb", "Gb", "Ab", "Bb"].forEach(id => {
+      document.getElementById(id).addEventListener('change', () => toggleAccidental(id));
+    });
+
+    // Basic staff + bass clef rendering without external libraries
+    const svgNS = "http://www.w3.org/2000/svg";
+    const staff = document.getElementById('staff');
+    const fingerboard = document.getElementById('fingerboard');
+
+    // Layout
+    const marginLeft = 30;   // space for clef
+    const marginRight = 20;
+    const staffTop = 60;
+    const staffGap = 18;     // distance between staff lines
+    const staffGapHalf = 18 / 2;
+    const staffWidth = 1400 - marginLeft - marginRight;
+
+    // Draw five staff lines
+    for (let i = 0; i < 5; i++) {
+      const y = staffTop + i * staffGap;
+      const line = document.createElementNS(svgNS, 'line');
+      line.setAttribute('x1', marginLeft);
+      line.setAttribute('x2', marginLeft + staffWidth);
+      line.setAttribute('y1', y);
+      line.setAttribute('y2', y);
+      line.setAttribute('class', 'staff-line');
+      staff.appendChild(line);
+    }
+
+    // Bass clef glyph (U+1D122). Many modern systems render it; if not, it gracefully degrades.
+    const clef = document.createElementNS(svgNS, 'text');
+    clef.setAttribute('x', 36);
+    clef.setAttribute('y', staffTop + 5 + staffGap * 2.5); // centered on 2nd line from top for bass clef
+    clef.setAttribute('class', 'clef');
+    clef.textContent = '\uD834\uDD22'; // 𝄢
+    staff.appendChild(clef);
+
+    const accidentals = {
+      'C': '',
+      'D': '',
+      'E': '',
+      'F': '',
+      'G': '',
+      'A': '',
+      'B': ''
+    };
+
+    const accPos = {
+      'C': 6,
+      'D': 5,
+      'F': 3,
+      'G': 2,
+      'A': 1,
+      'E': 4,
+      'B': 7,
+    };
+
+    const bases = ["C", "D", "E", "F", "G", "A", "B"];
+
+    function generatePositions() {
+      const positions = []
+      for (let t = 0; t < 21; t++) {
+        const base = bases[t % 7];
+        const octave = 2 + Math.floor(t / 7);
+        const name = getName(base, octave);
+        const pos = 12 - t; // C2 starts at pos 12 and goes down
+        positions.push({ name, pos });
+      }
+      return positions
+    }
+
+    function generateCelloStrings() {
+      const celloStrings = [];
+      const scale = ['C', null, 'D', null, 'E', 'F', null, 'G', null, 'A', null, 'B'];
+      const initNotes = [0, 7, 2, 9]; // C, G, D, A
+      const initOctave = [2, 2, 3, 3];
+      for (let s = 0; s < 4; s++) {
+        let octave = initOctave[s];
+        let notes = [];
+        let init = initNotes[s];
+        for (let i = 0; i < 15; i++) {
+          const n = init + i;
+          if (n !== 0 && n % scale.length === 0) {
+            octave += 1;
+          }
+          const note = scale[n % scale.length];
+          if (note === null) {
+            const prev = scale[(n - 1) % scale.length];
+            const next = scale[(n + 1) % scale.length];
+            if (accidentals[prev] === '#') {
+              notes.push(prev + '#' + octave);
+            } if (accidentals[next] === 'b') {
+              notes.push(next + 'b' + octave);
+            } else {
+              notes.push(null);
+            }
+          } else {
+            if (accidentals[note] !== '') {
+              notes.push(null);
+            } else {
+              notes.push(note + octave);
+            }
+          }
+        }
+        celloStrings.push({
+          name: scale[init],
+          notes: notes
+        })
+      }
+      return celloStrings;
+    }
+
+    const xStart = marginLeft + 150;
+    const xStep = 53;
+
+    let currentSelection = null;
+    let allNoteElements = [];
+    let allFingerElements = [];
+    let allAccidentals = [];
+
+    function getName(base, octave) {
+      return base + accidentals[base] + octave;
+    }
+
+    function renderNote(x, y_pos, label) {
+      const y = staffTop + y_pos * staffGapHalf;
+      const g = document.createElementNS(svgNS, 'g');
+
+      // Draw ledger lines if needed
+      for (let i = 10; i <= y_pos; i += 2) {
+        const y = staffTop + i * staffGapHalf;
+        const line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', x - 15);
+        line.setAttribute('x2', x + 15);
+        line.setAttribute('y1', y);
+        line.setAttribute('y2', y);
+        line.setAttribute('class', 'staff-line');
+        g.appendChild(line);
+      }
+      for (let i = -2; i >= y_pos; i -= 2) {
+        const y = staffTop + i * staffGapHalf;
+        const line = document.createElementNS(svgNS, 'line');
+        line.setAttribute('x1', x - 15);
+        line.setAttribute('x2', x + 15);
+        line.setAttribute('y1', y);
+        line.setAttribute('y2', y);
+        line.setAttribute('class', 'staff-line');
+        g.appendChild(line);
+      }
+      g.setAttribute('class', 'note');
+      g.setAttribute('tabindex', '0'); // keyboard focusable
+      g.setAttribute('role', 'button');
+      g.setAttribute('aria-label', `Select note ${label}`);
+      g.dataset.noteName = label;
+
+      // Elliptical notehead
+      const ellipse = document.createElementNS(svgNS, 'ellipse');
+      ellipse.setAttribute('cx', x);
+      ellipse.setAttribute('cy', y);
+      ellipse.setAttribute('rx', 10);
+      ellipse.setAttribute('ry', 7);
+      ellipse.setAttribute('transform', `rotate(-15 ${x} ${y})`);
+
+      // Note label positioned below the note
+      const txt = document.createElementNS(svgNS, 'text');
+      txt.setAttribute('x', x);
+      txt.setAttribute('y', 205);
+      txt.setAttribute('text-anchor', 'middle');
+      txt.setAttribute('class', 'note-label');
+      txt.textContent = label;
+
+      g.appendChild(ellipse);
+      g.appendChild(txt);
+
+      g.addEventListener('click', () => { selectTone(g) });
+      g.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectTone(g); }
+      });
+
+      staff.appendChild(g);
+      allNoteElements.push(g);
+      return g;
+    }
+
+    function toggleAccidental(tone) {
+      if (accidentals[tone.charAt(0)] === tone.charAt(1)) {
+        accidentals[tone.charAt(0)] = '';
+      } else {
+        accidentals[tone.charAt(0)] = tone.charAt(1);
+      }
+      const other = tone.charAt(1) === '#' ?
+        tone.charAt(0) + 'b' :
+        tone.charAt(0) + '#';
+      const otherElement = document.getElementById(other);
+      if (otherElement) {
+        otherElement.checked = false;
+      }
+      drawStaffNotes();
+      drawFingerboard();
+    }
+
+    function addName(element, text) {
+      if (text === null) {
+        return;
+      }
+      if (text[1] === '#') {
+        const t1 = document.createElementNS(svgNS, 'tspan');
+        t1.textContent = text[0]; // First character
+        element.appendChild(t1);
+        const t2 = document.createElementNS(svgNS, 'tspan');
+        t2.textContent = text[1]; // Second character
+        t2.setAttribute('dy', '5px');
+        t2.setAttribute('font-size', '0.60em');
+        element.appendChild(t2);
+        const t3 = document.createElementNS(svgNS, 'tspan');
+        t3.setAttribute('dy', '-5px');
+        t3.textContent = text[2]; // First character
+        element.appendChild(t3);
+      } else {
+        element.textContent = text;
+      }
+    }
+
+    function drawStaffNotes() {
+      allNoteElements.forEach(el => staff.removeChild(el));
+      allNoteElements.length = 0;
+      allAccidentals.forEach(el => staff.removeChild(el));
+      allAccidentals.length = 0;
+
+      const positions = generatePositions();
+      positions.forEach((p, i) => {
+        const x = xStart + i * xStep;
+        renderNote(x, p.pos, p.name);
+      });
+      let x = marginLeft + 90;
+      for (const key in accidentals) {
+        const s = accidentals[key];
+        if (s !== '') {
+          const y = accPos[key] * staffGapHalf + staffTop + (s === '#' ? 2 : -2);
+          const txt = document.createElementNS(svgNS, 'text');
+          txt.setAttribute('x', x);
+          txt.setAttribute('y', y);
+          txt.setAttribute('class', 'prefix-label');
+          txt.textContent = s === '#' ? '♯' : '♭';
+          staff.appendChild(txt);
+          allAccidentals.push(txt);
+          x += 20;
+        }
+      }
+    }
+    drawStaffNotes();
+
+    // Draw cello fingerboard
+    function drawFingerboard() {
+      fingerboard.innerHTML = '';
+      const fbMarginLeft = 80;
+      const fbMarginTop = 50;
+      const stringSpacing = 160;
+      const fretSpacing = 50;
+      const numFrets = 14;
+      const bracketX = fbMarginLeft + stringSpacing * 3 + 60; // Position brackets to the right
+
+      // Draw the nut (top bar)
+      const nut = document.createElementNS(svgNS, 'line');
+      nut.setAttribute('x1', fbMarginLeft - 10);
+      nut.setAttribute('x2', fbMarginLeft + stringSpacing * 3 + 10);
+      nut.setAttribute('y1', fbMarginTop);
+      nut.setAttribute('y2', fbMarginTop);
+      nut.setAttribute('class', 'nut');
+      fingerboard.appendChild(nut);
+
+      // Draw fret lines
+      for (let i = 1; i <= numFrets; i++) {
+        const y = fbMarginTop + i * fretSpacing;
+        const fret = document.createElementNS(svgNS, 'line');
+        fret.setAttribute('x1', fbMarginLeft - 10);
+        fret.setAttribute('x2', fbMarginLeft + stringSpacing * 3 + 10);
+        fret.setAttribute('y1', y);
+        fret.setAttribute('y2', y);
+        fret.setAttribute('class', 'fret');
+        fingerboard.appendChild(fret);
+      }
+
+      // Draw position brackets
+      const positions = [
+        { name: 'Base Position', startFret: 2 },
+        { name: '2nd Position', startFret: 4 },
+        { name: '3rd Position', startFret: 6 },
+        { name: '4th Position', startFret: 8 },
+        { name: '5th Position', startFret: 10 }
+      ];
+
+      positions.forEach((position, index) => {
+        // Only draw brackets for positions that are visible
+        if (position.startFret <= numFrets) {
+          const startFret = position.startFret;
+          const endFret = position.startFret + 3;
+          const startY = fbMarginTop + startFret * fretSpacing;
+          const endY = fbMarginTop + endFret * fretSpacing;
+          const midY = (startY + endY) / 2;
+
+          // Draw bracket
+          const bracket = document.createElementNS(svgNS, 'path');
+          const bracketWidth = 20;
+          const x = bracketX + index * 25;
+          const d = `M ${x} ${startY}
+                     L ${x + bracketWidth} ${startY}
+                     L ${x + bracketWidth} ${endY}
+                     L ${x} ${endY}`;
+          bracket.setAttribute('d', d);
+          bracket.setAttribute('class', 'position-bracket');
+          fingerboard.appendChild(bracket);
+
+          // Add position label
+          const label = document.createElementNS(svgNS, 'text');
+          label.setAttribute('x', x + bracketWidth + 5);
+          label.setAttribute('y', startY + 15);
+          label.setAttribute('class', 'position-bracket-label');
+          label.textContent = position.name;
+          fingerboard.appendChild(label);
+
+          label.addEventListener('click', () => {
+            highlightPosition(startFret, endFret);
+          });
+        }
+      });
+
+      // Draw strings and positions
+      generateCelloStrings().forEach((string, stringIndex) => {
+        const x = fbMarginLeft + stringIndex * stringSpacing;
+
+        // Draw string line
+        const stringLine = document.createElementNS(svgNS, 'line');
+        stringLine.setAttribute('x1', x);
+        stringLine.setAttribute('x2', x);
+        stringLine.setAttribute('y1', fbMarginTop);
+        stringLine.setAttribute('y2', fbMarginTop + fretSpacing * numFrets + 20);
+        stringLine.setAttribute('class', `string ${string.name.toLowerCase()}-string`);
+        fingerboard.appendChild(stringLine);
+
+        // Add string label
+        const label = document.createElementNS(svgNS, 'text');
+        label.setAttribute('x', x);
+        label.setAttribute('y', fbMarginTop - 30);
+        label.setAttribute('text-anchor', 'middle');
+        label.setAttribute('class', 'string-label');
+        label.textContent = string.name;
+        fingerboard.appendChild(label);
+
+        // Add finger positions
+        string.notes.slice(0, numFrets + 1).forEach((note, fretIndex) => {
+          const y = fbMarginTop + fretIndex * fretSpacing;
+
+          const g = document.createElementNS(svgNS, 'g');
+          g.setAttribute('class', 'finger-position');
+          g.dataset.noteName = note;
+          g.dataset.string = string.name;
+          g.dataset.fret = fretIndex;
+
+          const circle = document.createElementNS(svgNS, 'circle');
+          circle.setAttribute('cx', x);
+          circle.setAttribute('cy', y);
+          circle.setAttribute('r', '20');
+
+          const text = document.createElementNS(svgNS, 'text');
+          text.setAttribute('x', x);
+          text.setAttribute('y', y);
+          addName(text, note);
+
+          g.appendChild(circle);
+          g.appendChild(text);
+
+          if (note != null) {
+            g.addEventListener('click', () => {
+              const g = allNoteElements.find(el => el.dataset.noteName === note);
+              if (g) {
+                selectTone(g);
+              }
+            })
+          }
+
+          fingerboard.appendChild(g);
+          allFingerElements.push(g);
+        });
+
+        for (let fret = 0; fret <= numFrets; fret += 1) {
+          const y = fbMarginTop + fret * fretSpacing;
+          const marker = document.createElementNS(svgNS, 'text');
+          marker.setAttribute('x', fbMarginLeft - 30);
+          marker.setAttribute('y', y + 4);
+          marker.setAttribute('class', 'position-label');
+          marker.textContent = fret === 0 ? 'Open' : `${fret}`;
+          fingerboard.appendChild(marker);
+        };
+      });
+    }
+
+    function highlightPosition(startFret, endFret) {
+      allFingerElements.forEach(fingerEl => {
+        fingerEl.classList.remove('position-highlighted');
+      });
+
+      allFingerElements.forEach(fingerEl => {
+        const fret = parseInt(fingerEl.dataset.fret);
+        if (fret >= startFret && fret <= endFret) {
+          fingerEl.classList.add('position-highlighted');
+        }
+      });
+    }
+
+    drawFingerboard();
+  </script>
+</body>
+
+</html>
