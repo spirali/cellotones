@@ -109,7 +109,7 @@ function selectTone(element) {
     // Bass clef glyph (U+1D122). Many modern systems render it; if not, it gracefully degrades.
     const clef = document.createElementNS(svgNS, 'text');
     clef.setAttribute('x', 36);
-    clef.setAttribute('y', staffTop + 5 + staffGap * 2.5); // centered on 2nd line from top for bass clef
+    clef.setAttribute('y', staffTop + staffGap * 2.5); // centered on 2nd line from top for bass clef
     clef.setAttribute('class', 'clef');
     clef.textContent = '\uD834\uDD22'; // 𝄢
     staff.appendChild(clef);
