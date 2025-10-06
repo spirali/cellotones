@@ -20,15 +20,15 @@
       <h2>🎵 Bass Clef Note Selector</h2>
     </div>
     <div class="accidental-controls">
-      <div class="accidental-group"><label><input type="checkbox" id="C#">C&#9839;</label></div>
-      <div class="accidental-group"><label><input type="checkbox" id="D#">D&#9839;</label></div>
       <div class="accidental-group"><label><input type="checkbox" id="F#">F&#9839;</label></div>
+      <div class="accidental-group"><label><input type="checkbox" id="C#">C&#9839;</label></div>
       <div class="accidental-group"><label><input type="checkbox" id="G#">G&#9839;</label></div>
+      <div class="accidental-group"><label><input type="checkbox" id="D#">D&#9839;</label></div>
       <div class="accidental-group"><label><input type="checkbox" id="A#">A&#9839;</label></div>
-      <div class="accidental-group"><label><input type="checkbox" id="Db">D&#9837;</label></div>
-      <div class="accidental-group"><label><input type="checkbox" id="Eb">E&#9837;</label></div>
       <div class="accidental-group"><label><input type="checkbox" id="Gb">G&#9837;</label></div>
+      <div class="accidental-group"><label><input type="checkbox" id="Db">D&#9837;</label></div>
       <div class="accidental-group"><label><input type="checkbox" id="Ab">A&#9837;</label></div>
+      <div class="accidental-group"><label><input type="checkbox" id="Eb">E&#9837;</label></div>
       <div class="accidental-group"><label><input type="checkbox" id="Bb">B&#9837;</label></div>
     </div>
     <svg id="staff" viewBox="0 0 1300 300" aria-label="Bass clef staff with selectable notes" role="img"></svg>
@@ -77,7 +77,7 @@ function selectTone(element) {
   });
 }
 
-    ["C#", "D#", "F#", "G#", "A#", "Db", "Eb", "Gb", "Ab", "Bb"].forEach(id => {
+    ["F#", "C#", "G#", "D#", "A#", "Gb", "Db", "Ab", "Eb", "Bb"].forEach(id => {
       document.getElementById(id).addEventListener('change', () => toggleAccidental(id));
     });
 
@@ -115,24 +115,40 @@ function selectTone(element) {
     staff.appendChild(clef);
 
     const accidentals = {
-      'C': '',
-      'D': '',
-      'E': '',
       'F': '',
+      'C': '',
       'G': '',
+      'D': '',
       'A': '',
+      'E': '',
       'B': ''
     };
 
+
+    // Determine Y position for key signature.
+    // 0 maps to 'B3', first finger on A string
+    // Each integer value higher renders a note lower
     const accPos = {
-      'C': 6,
-      'D': 5,
       'F': 3,
+      'C': 6,
       'G': 2,
-      'A': 1,
+      'D': 5,
+      'A': 8,
       'E': 4,
       'B': 7,
     };
+    // Calculate note position in key signature.
+    // Gb and Fb are represented an octave
+    //   lower than their equivalent sharp
+    function bassCleffAccidentalPosition(note, accidental) {
+      let offset = accPos[note];
+      if (accidental == 'b' && note.match(/[GF]/)) {
+        offset += 7
+      }
+
+      return offset
+    };
+
 
     const bases = ["C", "D", "E", "F", "G", "A", "B"];
 
@@ -300,6 +316,7 @@ function selectTone(element) {
       }
     }
 
+    // Render key signature glyphs
     function drawStaffNotes() {
       allNoteElements.forEach(el => staff.removeChild(el));
       allNoteElements.length = 0;
@@ -312,10 +329,22 @@ function selectTone(element) {
         renderNote(x, p.pos, p.name);
       });
       let x = marginLeft + 90;
-      for (const key in accidentals) {
+      // Sharp and Flat key signatures are represented in opposite order:
+      // Sharps: FCGDAEB
+      // Flats:  BEADGCF
+      let accidentalOrder = Object.keys(accidentals);
+      if (Object.values(accidentals).includes('b')) {
+        accidentalOrder.reverse()
+      }
+      for (const key of accidentalOrder) {
         const s = accidentals[key];
         if (s !== '') {
-          const y = accPos[key] * staffGapHalf + staffTop + (s === '#' ? 2 : -2);
+          const symbolOffset = 2;
+          const y =
+            bassCleffAccidentalPosition(key, s)
+              * staffGapHalf
+              + staffTop
+              + symbolOffset;
           const txt = document.createElementNS(svgNS, 'text');
           txt.setAttribute('x', x);
           txt.setAttribute('y', y);
