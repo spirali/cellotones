@@ -315,7 +315,8 @@ function selectTone(element) {
       for (const key in accidentals) {
         const s = accidentals[key];
         if (s !== '') {
-          const y = accPos[key] * staffGapHalf + staffTop + (s === '#' ? 2 : -2);
+          const symbolOffset = 2;
+          const y = accPos[key] * staffGapHalf + staffTop + symbolOffset;
           const txt = document.createElementNS(svgNS, 'text');
           txt.setAttribute('x', x);
           txt.setAttribute('y', y);
