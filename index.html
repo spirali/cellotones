@@ -142,7 +142,6 @@ function selectTone(element) {
     //   lower than their equivalent sharp
     function bassCleffAccidentalPosition(note, accidental) {
       let offset = accPos[note];
-      debugger
       if (accidental == 'b' && note.match(/[GF]/)) {
         offset += 7
       }
@@ -317,6 +316,7 @@ function selectTone(element) {
       }
     }
 
+    // Render key signature glyphs
     function drawStaffNotes() {
       allNoteElements.forEach(el => staff.removeChild(el));
       allNoteElements.length = 0;
@@ -329,7 +329,14 @@ function selectTone(element) {
         renderNote(x, p.pos, p.name);
       });
       let x = marginLeft + 90;
-      for (const key in accidentals) {
+      // Sharp and Flat key signatures are represented in opposite order:
+      // Sharps: FCGDAEB
+      // Flats:  BEADGCF
+      let accidentalOrder = Object.keys(accidentals);
+      if (Object.values(accidentals).includes('b')) {
+        accidentalOrder.reverse()
+      }
+      for (const key of accidentalOrder) {
         const s = accidentals[key];
         if (s !== '') {
           const symbolOffset = 2;
